@@ -4,15 +4,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-plt.style.use('seaborn')
-plt.rcParams['font.family'] = 'Hiragino Sans'
-import seaborn as sns
 
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import \
-    cross_validate, KFold, GridSearchCV, RandomizedSearchCV
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
 
 '''データ前処理'''
@@ -75,65 +68,3 @@ after_test = df_test.merge(dammies, right_index=True, left_index=True).drop(
 # 多重共線性を考慮してダミー変数を1つずつ消しておく
 after_test = after_test.drop(['female', 'C'], axis=1)
 after_test.head()
-
-
-'''予測モデルの構築'''
-# ランダムフォレスト
-#%% グリッドサーチで良いパラメータを選ぶ
-param_grid = {'min_samples_split': [15, 20, 25, 30],}
-
-clf = GridSearchCV(
-    estimator=rfc,
-    param_grid=param_grid,
-    scoring='accuracy',
-    cv=KFold(n_splits=5, shuffle=True),
-    return_train_score=True)
-
-clf.fit(train_features, train_target)
-print('ベストパラメータ:', clf.best_params_)
-print('ベストスコア:', clf.best_score_)
-
-#%% ランダムフォレストでやってみる
-rfc = RandomForestClassifier(n_estimators=500,
-                            min_samples_split=25,
-                            min_samples_leaf=2,
-                            max_leaf_nodes=7,
-                            max_depth=4)
-
-features = ['Pclass', 'Age', 'SibSp', 'Parch',
-            'Fare', 'Age_NaN', 'male', 'Q', 'S']
-train_features = after_train[features].values
-train_target = after_train['Survived']
-
-rfc.fit(train_features, train_target)
-
-train_pred = rfc.predict(train_features)
-print('trainデータでの正解率:', accuracy_score(train_target, train_pred))
-confusion_matrix(train_target, train_pred)
-print('F1-score:', f1_score(train_target, train_pred))
-
-
-#%% テストデータでの予測
-test_features = after_test[features].values
-test_target = df_ans['Survived']
-
-test_pred = rfc.predict(test_features)
-print('testデータでの正解率:', accuracy_score(test_target, test_pred))
-confusion_matrix(test_target, test_pred)
-print('F1-score:', f1_score(test_target, test_pred))
-
-#%% 変数重要度
-importances = rfc.feature_importances_
-indices = np.argsort(-importances)
-plt.bar(np.array(features)[indices], np.array(rfc.feature_importances_[indices]))
-plt.show()
-
-
-#%% csvにして書き出す
-PassengerId = df_test['PassengerId'].values
-
-ans_df = pd.DataFrame(test_pred, PassengerId)
-ans_df.columns = ['Survived']
-ans_df.index.name = 'PassengerId'
-
-ans_df.to_csv('titanic_answer.csv')
