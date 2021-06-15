@@ -68,5 +68,20 @@ plt.bar(type_rev.index, type_rev.values)
 plt.show()
 
 
-#%% Pi
-# ここだけ取り出して時限削減すべきか？
+#%% City, CityGroup, TypeをOnehot化する。
+ohe = OneHotEncoder(sparse=False)
+dammies = ohe.fit_transform(train_data[['City', 'City Group', 'Type']])
+dammies = pd.DataFrame(dammies)
+columns = np.append(ohe.categories_[0], ohe.categories_[1])
+columns = np.append(columns, ohe.categories_[2])
+dammies.columns = columns
+# 多重共線性を考慮してダミー変数を1つずつ消しておく
+dammies = dammies.drop(['Other', 'IL'], axis=1)
+
+#%% ダミー変数を結合する
+after_train = train_data.merge(dammies, right_index=True, left_index=True).drop(
+    ['City', 'City Group', 'Type'], axis=1)
+
+after_train.head()
+
+#%% 
