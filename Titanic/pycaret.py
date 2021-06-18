@@ -4,6 +4,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import pandas_profiling
+from pycaret.classification import *
 
 from sklearn.preprocessing import OneHotEncoder
 
@@ -68,3 +70,53 @@ after_test = df_test.merge(dammies, right_index=True, left_index=True).drop(
 # 多重共線性を考慮してダミー変数を1つずつ消しておく
 after_test = after_test.drop(['female', 'C'], axis=1)
 after_test.head()
+
+
+
+#%% Pandas_profiling
+pandas_profiling.ProfileReport(df_train)
+
+#%% PyCaret
+X_train = df_train.copy().drop(['PassengerId'], axis=1)
+X_train.head()
+# PyCaretの起動
+exp1 = setup(X_train, target='Survived',
+            numeric_features=['SibSp', 'Parch'], ignore_features=None)
+
+# モデルの比較
+compare_models()
+
+# 特定のモデルに対し、学習データによる制度の比較
+# RandomForest
+rf = create_model('rf')
+
+# パイパーパラメータの最適化
+tuned_rf = tune_model(rf, n_iter=100)
+
+# パラメータ最適結果の確認
+evaluate_model(tuned_rf)
+# 変数重要度
+plot_model(tuned_rf, plot='feature')
+
+# 予測を行う
+rf_predict = predict_model(tuned_rf)
+
+# テストデータでの予測
+X_test = df_test.copy().drop(['PassengerId'], axis=1)
+X_test.head()
+
+final_rf = finalize_model(tuned_rf)
+final_rf
+result = predict_model(final_rf, data=X_test)
+# Label列に正解が入る Scoreは予測の確率
+result.head(10)
+# 予測確率が0.6を切っている個数
+result.query('Score < 0.6').shape
+
+
+#%% csvにして書き出す
+ans_df = pd.DataFrame(result['Label'].values, df_test['PassengerId'].values)
+ans_df.columns = ['Survived']
+ans_df.index.name = 'PassengerId'
+
+ans_df.to_csv('titanic_answer.csv')
