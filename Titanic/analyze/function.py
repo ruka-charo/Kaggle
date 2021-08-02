@@ -4,7 +4,7 @@ pd.set_option('display.max_columns', 500)
 import category_encoders as ce
 
 
-
+# 欠損値やカラムの取捨選択
 def preprocessing(train_data, test_data, drop_columns, category_features):
     # データの取捨選択
     train_data = train_data.drop(drop_columns, axis=1)
@@ -23,21 +23,14 @@ def preprocessing(train_data, test_data, drop_columns, category_features):
 
     X_train, X_test = _label_encoding(X_train, X_test, category_features)
 
-    return X_train, X_test
+    return X_train, y_train, X_test
 
 
+# テストデータの予測
+def test_predict(clf, X_test):
+    test_pred = clf.predict(X_test, num_iteration=clf.best_iteration_)
+    pred_df = pd.DataFrame(test_pred.round().astype('int8'), columns=['Survived'])
+    ans = pd.DataFrame(df_test['PassengerId'], columns=['PassengerId'])
+    ans = ans.merge(pred_df, right_index=True, left_index=True)
 
-def _label_encoding(X_train, X_test, category_features):
-    # データを結合させる
-    mix_df = pd.concat([X_train, X_test])
-
-    # # カテゴリ変数をcategory_labelingで置換
-    category_features = category_features
-    oe = ce.OrdinalEncoder(cols=category_features)
-    mix_df = oe.fit_transform(mix_df)
-
-    # データを分割する
-    X_train_en = mix_df[:X_train.shape[0]]
-    X_test_en = mix_df[X_train.shape[0]:]
-
-    return X_train_en, X_test_en
+    return ans
